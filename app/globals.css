@@ -65,6 +65,15 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Disable text selection for swipe cards */
+  .select-none {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
 }
 
 /* Leaflet custom styles */
@@ -103,6 +112,20 @@
   50% {
     box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
   }
+}
+
+.user-location-marker > div {
+  animation: pulse 2s infinite;
+}
+
+/* Bus stop marker styling */
+.bus-stop-marker {
+  transition: transform 0.2s ease;
+}
+
+.bus-stop-marker:hover {
+  transform: scale(1.15);
+  z-index: 1000 !important;
 }
 
 .user-location-marker {

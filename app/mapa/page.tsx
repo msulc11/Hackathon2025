@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import Link from 'next/link';
 
 const InteractiveMap = dynamic(() => import('@/components/interactive-map'), {
   ssr: false,
-  loading: () => <div className="h-[calc(100vh-200px)] flex items-center justify-center">Načítání mapy...</div>
+  loading: () => <div className="h-full flex items-center justify-center">Načítání mapy...</div>
 });
 
 interface Feature {
@@ -23,56 +25,116 @@ interface Feature {
   properties: any;
   category: string;
   featureType?: 'transport' | 'place';
+  emoji?: string;
 }
 
+// Kategorie pro filtry
+const CATEGORY_FILTERS = [
+  { key: 'hrady', name: '🏰 Hrady', type: 'place' },
+  { key: 'zahrady', name: '🌳 Botanické zahrady', type: 'place' },
+  { key: 'muzea', name: '🖼️ Muzea a galerie', type: 'place' },
+  { key: 'divadla', name: '🎭 Divadla', type: 'place' },
+  { key: 'pivovary', name: '🍺 Pivovary', type: 'place' },
+  { key: 'rozhledny', name: '🗼 Rozhledny', type: 'place' },
+  { key: 'koupani', name: '🏊 Letní koupání', type: 'place' },
+  { key: 'pamatky', name: '🏛️ Památky', type: 'place' },
+  { key: 'bus', name: '🚌 Autobusové zastávky', type: 'transport' },
+];
+
 export default function MapaPage() {
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [radius, setRadius] = useState(15);
+  const [userLocation, setUserLocation] = useState<[number, number]>([50.2091, 15.8327]);
+  const [address, setAddress] = useState('');
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [radius, setRadius] = useState(50);
   const [allFeatures, setAllFeatures] = useState<Feature[]>([]);
   const [filteredFeatures, setFilteredFeatures] = useState<Feature[]>([]);
-  const [filters, setFilters] = useState({
-    transport: true,
-    places: true
+  const [categoryFilters, setCategoryFilters] = useState<Record<string, boolean>>({
+    hrady: true,
+    zahrady: true,
+    muzea: true,
+    divadla: true,
+    pivovary: true,
+    rozhledny: true,
+    koupani: true,
+    pamatky: true,
+    bus: true,
   });
-  const [stats, setStats] = useState({ transport: 0, places: 0, total: 0 });
+  const [stats, setStats] = useState({ transport: 0, places: 0, total: 0, categories: {} });
   const [loading, setLoading] = useState(true);
-  const [locationError, setLocationError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
-  // Požádat o polohu uživatele
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Získej polohu uživatele
+  useEffect(() => {
+    if (!mounted) return;
+    
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setUserLocation([position.coords.latitude, position.coords.longitude]);
-          setLocationError(null);
+          console.log('Poloha získána:', position.coords.latitude, position.coords.longitude);
         },
         (error) => {
           console.error('Chyba při získávání polohy:', error);
-          setLocationError('Nepodařilo se získat vaši polohu. Zobrazuji všechna místa.');
-          // Fallback na střed Královéhradeckého kraje
-          setUserLocation([50.2091, 15.8327]);
+          console.log('Používám výchozí polohu: Hradec Králové');
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
         }
       );
-    } else {
-      setLocationError('Váš prohlížeč nepodporuje geolokaci.');
-      setUserLocation([50.2091, 15.8327]);
     }
-  }, []);
+  }, [mounted]);
 
   // Načíst data z API
   useEffect(() => {
+    if (!mounted) return;
+    
     fetch('/api/map-data')
       .then(res => res.json())
       .then(data => {
+        console.log('Načteno míst:', data.features?.length);
         setAllFeatures(data.features || []);
-        setStats(data.stats || { transport: 0, places: 0, total: 0 });
+        setStats(data.stats || { transport: 0, places: 0, total: 0, categories: {} });
         setLoading(false);
       })
       .catch(error => {
         console.error('Chyba při načítání dat:', error);
         setLoading(false);
       });
-  }, []);
+  }, [mounted]);
+
+  // Geocoding - převod adresy na souřadnice
+  const handleAddressSearch = async () => {
+    if (!address.trim()) return;
+    
+    setAddressLoading(true);
+    try {
+      // Použij Nominatim (OpenStreetMap) geocoding
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1&countrycodes=cz`
+      );
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        setUserLocation([lat, lon]);
+        console.log('Adresa nalezena:', lat, lon);
+      } else {
+        alert('Adresa nenalezena. Zkuste jiný formát (např. "Hradec Králové" nebo "Praha").');
+      }
+    } catch (error) {
+      console.error('Chyba při hledání adresy:', error);
+      alert('Chyba při hledání adresy.');
+    } finally {
+      setAddressLoading(false);
+    }
+  };
 
   // Vypočítat vzdálenost mezi dvěma body (Haversine formula)
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -95,25 +157,39 @@ export default function MapaPage() {
     }
 
     const filtered = allFeatures.filter(feature => {
-      // Filtr podle typu
-      if (feature.featureType === 'transport' && !filters.transport) return false;
-      if (feature.featureType === 'place' && !filters.places) return false;
+      // Kontrola validity dat
+      if (!feature.geometry || !feature.geometry.coordinates) {
+        return false;
+      }
+
+      // Filtr podle kategorie
+      const categoryName = feature.category.toLowerCase();
+      if (categoryName.includes('hrad') && !categoryFilters.hrady) return false;
+      if (categoryName.includes('zahrad') && !categoryFilters.zahrady) return false;
+      if (categoryName.includes('muzea') && !categoryFilters.muzea) return false;
+      if (categoryName.includes('divadl') && !categoryFilters.divadla) return false;
+      if (categoryName.includes('pivovar') && !categoryFilters.pivovary) return false;
+      if (categoryName.includes('rozhled') && !categoryFilters.rozhledny) return false;
+      if (categoryName.includes('koupán') && !categoryFilters.koupani) return false;
+      if (categoryName.includes('památk') && !categoryFilters.pamatky) return false;
+      if (categoryName.includes('autobus') && !categoryFilters.bus) return false;
 
       // Filtr podle vzdálenosti
       const [lon, lat] = feature.geometry.coordinates;
+      if (typeof lat !== 'number' || typeof lon !== 'number') {
+        return false;
+      }
+      
       const distance = calculateDistance(userLocation[0], userLocation[1], lat, lon);
       return distance <= radius;
     });
 
     setFilteredFeatures(filtered);
-  }, [userLocation, allFeatures, radius, filters]);
+  }, [userLocation, allFeatures, radius, categoryFilters]);
 
-  const transportCount = filteredFeatures.filter(f => f.featureType === 'transport').length;
-  const placesCount = filteredFeatures.filter(f => f.featureType === 'place').length;
-
-  if (loading) {
+  if (!mounted || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Načítání dat...</p>
@@ -123,154 +199,190 @@ export default function MapaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100">
       {/* Navbar */}
-      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <nav className="bg-white/80 backdrop-blur-md border-b border-blue-200 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-8">
-              <a href="/" className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Plánio
-              </a>
+              <Link href="/" className="flex items-center gap-2">
+                <Image src="/logo.png" alt="ZabrouzdAi" width={32} height={32} className="object-contain" />
+                <span className="text-xl font-bold text-blue-600 hover:text-blue-700 transition-colors">ZabrouzdAi</span>
+              </Link>
               <div className="hidden md:flex gap-6">
-                <a href="/" className="text-gray-600 hover:text-gray-900 transition-colors">
+                <Link href="/" className="text-gray-600 hover:text-blue-600 transition-colors">
                   Domů
-                </a>
-                <a href="/mapa" className="text-blue-600 font-semibold">
-                  Mapa
-                </a>
+                </Link>
+                <Link href="/mapa" className="text-blue-600 font-semibold border-b-2 border-blue-600">
+                  Mapa okolí
+                </Link>
               </div>
             </div>
           </div>
         </div>
       </nav>
 
-      <div className="flex h-[calc(100vh-64px)]">
-        {/* Sidebar */}
-        <div className="w-80 bg-white/80 backdrop-blur-md border-r border-gray-200 p-6 overflow-y-auto">
-          <h1 className="text-2xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Mapa okolí
-          </h1>
-          <p className="text-sm text-gray-600 mb-6">
-            Objevte místa a dopravu ve vašem okolí
-          </p>
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar - 1/3 width */}
+        <div className="w-full md:w-1/3 bg-white/80 backdrop-blur-md border-r border-blue-200 overflow-y-auto">
+          <div className="p-6">
+            <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+              Mapa okolí
+            </h1>
+            <p className="text-sm text-gray-600 mb-6">
+              Objevte zajímavá místa v Královéhradeckém kraji
+            </p>
 
-          {/* Poloha */}
-          <Card className="p-4 mb-6 bg-white/50">
-            <h3 className="font-semibold mb-2 flex items-center gap-2">
-              <span>📍</span>
-              <span>Vaše poloha</span>
-            </h3>
-            {locationError ? (
-              <p className="text-sm text-amber-600">{locationError}</p>
-            ) : userLocation ? (
-              <p className="text-sm text-gray-600">
+            {/* Poloha */}
+            <Card className="p-4 mb-4 bg-white/90 border-blue-200">
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-blue-700">
+                <span>📍</span>
+                <span>Vaše poloha</span>
+              </h3>
+              
+              {/* Adresa */}
+              <div className="mb-3">
+                <Label htmlFor="address" className="text-sm mb-1 block">Zadejte adresu</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="address"
+                    type="text"
+                    placeholder="např. Hradec Králové"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleAddressSearch()}
+                    className="flex-1 border-blue-300"
+                  />
+                  <Button 
+                    onClick={handleAddressSearch}
+                    disabled={addressLoading}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {addressLoading ? '...' : '🔍'}
+                  </Button>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-500 mb-3">
                 {userLocation[0].toFixed(4)}, {userLocation[1].toFixed(4)}
               </p>
-            ) : (
-              <p className="text-sm text-gray-600">Získávání polohy...</p>
-            )}
-          </Card>
+              
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  if ('geolocation' in navigator) {
+                    navigator.geolocation.getCurrentPosition(
+                      (position) => {
+                        setUserLocation([position.coords.latitude, position.coords.longitude]);
+                      }
+                    );
+                  }
+                }}
+                className="w-full text-blue-600 border-blue-300 hover:bg-blue-50"
+              >
+                🔄 Použít moji GPS polohu
+              </Button>
+            </Card>
 
-          {/* Rozsah */}
-          <Card className="p-4 mb-6 bg-white/50">
-            <Label htmlFor="radius" className="font-semibold mb-2 block">
-              Rozsah vyhledávání
-            </Label>
-            <div className="flex items-center gap-3">
+            {/* Rozsah */}
+            <Card className="p-4 mb-4 bg-white/90 border-blue-200">
+              <Label htmlFor="radius" className="font-semibold mb-2 block text-blue-700">
+                Rozsah vyhledávání
+              </Label>
+              <div className="flex items-center gap-3 mb-3">
+                <Input
+                  id="radius"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={radius}
+                  onChange={(e) => setRadius(Number(e.target.value))}
+                  className="flex-1 border-blue-300"
+                />
+                <span className="text-sm text-gray-600 whitespace-nowrap font-semibold">km</span>
+              </div>
               <Input
-                id="radius"
-                type="number"
+                type="range"
                 min="1"
                 max="100"
                 value={radius}
                 onChange={(e) => setRadius(Number(e.target.value))}
-                className="flex-1"
+                className="w-full accent-blue-600"
               />
-              <span className="text-sm text-gray-600 whitespace-nowrap">km</span>
-            </div>
-            <Input
-              type="range"
-              min="1"
-              max="100"
-              value={radius}
-              onChange={(e) => setRadius(Number(e.target.value))}
-              className="w-full mt-3"
-            />
-          </Card>
+            </Card>
 
-          {/* Filtry */}
-          <Card className="p-4 mb-6 bg-white/50">
-            <h3 className="font-semibold mb-3">Zobrazit</h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="transport"
-                  checked={filters.transport}
-                  onCheckedChange={(checked) => 
-                    setFilters(prev => ({ ...prev, transport: checked as boolean }))
-                  }
-                />
-                <Label htmlFor="transport" className="flex items-center gap-2 cursor-pointer">
-                  <span className="text-xl">🚌</span>
-                  <span>Doprava ({transportCount})</span>
-                </Label>
-              </div>
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="places"
-                  checked={filters.places}
-                  onCheckedChange={(checked) => 
-                    setFilters(prev => ({ ...prev, places: checked as boolean }))
-                  }
-                />
-                <Label htmlFor="places" className="flex items-center gap-2 cursor-pointer">
-                  <span className="text-xl">📍</span>
-                  <span>Místa ({placesCount})</span>
-                </Label>
-              </div>
-            </div>
-          </Card>
+            {/* Filtry kategorií */}
+            <Card className="p-4 mb-4 bg-white/90 border-blue-200">
+              <h3 className="font-semibold mb-3 text-blue-700">Zobrazit kategorie</h3>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {CATEGORY_FILTERS.map((cat) => {
+                  const count = filteredFeatures.filter(f => {
+                    const name = f.category.toLowerCase();
+                    if (cat.key === 'hrady') return name.includes('hrad');
+                    if (cat.key === 'zahrady') return name.includes('zahrad');
+                    if (cat.key === 'muzea') return name.includes('muzea');
+                    if (cat.key === 'divadla') return name.includes('divadl');
+                    if (cat.key === 'pivovary') return name.includes('pivovar');
+                    if (cat.key === 'rozhledny') return name.includes('rozhled');
+                    if (cat.key === 'koupani') return name.includes('koupán');
+                    if (cat.key === 'pamatky') return name.includes('památk');
+                    if (cat.key === 'bus') return name.includes('autobus');
+                    return false;
+                  }).length;
 
-          {/* Statistiky */}
-          <Card className="p-4 bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-            <h3 className="font-semibold mb-3">Nalezeno v okolí {radius} km</h3>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="flex items-center gap-2">
-                  <span>🚌</span>
-                  <span>Doprava</span>
-                </span>
-                <span className="font-bold">{transportCount}</span>
+                  return (
+                    <div key={cat.key} className="flex items-center gap-3">
+                      <Checkbox
+                        id={cat.key}
+                        checked={categoryFilters[cat.key]}
+                        onCheckedChange={(checked) => 
+                          setCategoryFilters(prev => ({ ...prev, [cat.key]: checked as boolean }))
+                        }
+                        className="border-blue-400 data-[state=checked]:bg-blue-600"
+                      />
+                      <Label htmlFor={cat.key} className="flex items-center gap-2 cursor-pointer text-sm flex-1">
+                        <span>{cat.name}</span>
+                        <span className="ml-auto text-gray-500 font-semibold">({count})</span>
+                      </Label>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="flex justify-between items-center">
-                <span className="flex items-center gap-2">
-                  <span>📍</span>
-                  <span>Místa</span>
-                </span>
-                <span className="font-bold">{placesCount}</span>
+            </Card>
+
+            {/* Statistiky */}
+            <Card className="p-4 bg-gradient-to-br from-blue-500 to-cyan-600 text-white border-0">
+              <h3 className="font-semibold mb-3">Nalezeno v okolí {radius} km</h3>
+              <div className="text-center">
+                <div className="text-4xl font-bold mb-1">{filteredFeatures.length}</div>
+                <div className="text-sm opacity-90">celkem míst</div>
               </div>
-              <div className="pt-2 border-t border-white/20">
-                <div className="flex justify-between items-center font-bold">
-                  <span>Celkem</span>
-                  <span>{filteredFeatures.length}</span>
-                </div>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
         </div>
 
-        {/* Mapa */}
-        <div className="flex-1">
+        {/* Mapa - 2/3 width */}
+        <div className="hidden md:block md:w-2/3 relative">
           {userLocation && filteredFeatures.length > 0 ? (
             <InteractiveMap 
               features={filteredFeatures} 
-              filters={filters}
+              filters={{ transport: true, places: true }}
               userLocation={userLocation}
             />
           ) : (
-            <div className="h-full flex items-center justify-center text-gray-500">
-              {userLocation ? 'Žádná místa v okolí' : 'Získávání polohy...'}
+            <div className="h-full flex items-center justify-center bg-blue-50">
+              <div className="text-center text-gray-500">
+                <span className="text-4xl mb-2 block">🗺️</span>
+                {filteredFeatures.length === 0 ? (
+                  <>
+                    <p className="font-semibold">Žádná místa v okolí</p>
+                    <p className="text-sm">Zkuste zvýšit rozsah vyhledávání</p>
+                  </>
+                ) : (
+                  <p>Načítání mapy...</p>
+                )}
+              </div>
             </div>
           )}
         </div>
