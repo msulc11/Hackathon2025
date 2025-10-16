@@ -75,11 +75,9 @@ export default function MapaPage() {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setUserLocation([position.coords.latitude, position.coords.longitude]);
-          console.log('Poloha získána:', position.coords.latitude, position.coords.longitude);
         },
         (error) => {
-          console.error('Chyba při získávání polohy:', error);
-          console.log('Používám výchozí polohu: Hradec Králové');
+          // Tiše použij výchozí polohu
         },
         {
           enableHighAccuracy: true,

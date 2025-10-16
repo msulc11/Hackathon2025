@@ -418,7 +418,7 @@ export default function RouteMap({ userLocation, destinations, transportMode = '
           const [lon, lat] = dest.coordinates;
           return (
             <Marker
-              key={dest.id}
+              key={`${dest.id}-${index}`}
               position={[lat, lon]}
               icon={createDestinationIcon(index + 1)}
             >
