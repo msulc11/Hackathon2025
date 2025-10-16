@@ -216,6 +216,9 @@ export default function MapaPage() {
                 <Link href="/mapa" className="text-blue-600 font-semibold">
                   Mapa okolí
                 </Link>
+                <Link href="/brouzdal" className="text-gray-600 hover:text-blue-600">
+                  Brouzdal
+                </Link>
               </div>
             </div>
           </div>

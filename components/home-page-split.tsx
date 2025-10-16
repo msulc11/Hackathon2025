@@ -212,6 +212,9 @@ export default function HomePage() {
                 <Link href="/mapa" className="text-gray-600 hover:text-blue-600 transition-colors">
                   Mapa okolí
                 </Link>
+                <Link href="/brouzdal" className="text-gray-600 hover:text-blue-600 transition-colors">
+                  Brouzdal
+                </Link>
               </div>
             </div>
             <div className="flex items-center gap-3">
