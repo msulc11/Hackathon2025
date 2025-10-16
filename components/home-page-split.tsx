@@ -197,25 +197,25 @@ export default function HomePage() {
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100" suppressHydrationWarning>
       {/* Navbar */}
-      <nav className="bg-white/90 backdrop-blur-md border-b border-blue-200 z-50 shadow-sm" suppressHydrationWarning>
+      <nav className="fixed top-0 left-0 right-0 bg-white/90 backdrop-blur-md border-b border-blue-200 z-50 shadow-sm" suppressHydrationWarning>
         <div className="max-w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-8">
-              <Link href="/" className="text-xl font-bold text-blue-600 flex items-center gap-2">
-                <Image src="/logo.png" alt="ZabrouzdAi" width={32} height={32} className="object-contain" />
-                <span>ZabrouzdAi</span>
+            <Link href="/" className="text-xl font-bold text-blue-600 flex items-center gap-2">
+              <Image src="/logo.png" alt="ZabrouzdAi" width={32} height={32} className="object-contain" />
+              <span>ZabrouzdAi</span>
+            </Link>
+            <div className="hidden md:flex gap-8 absolute left-1/2 transform -translate-x-1/2">
+              <Link href="/" className="text-blue-600 font-semibold flex items-center gap-2">
+                <span className="text-xl">🎯</span>
+                <span>Objevuj</span>
               </Link>
-              <div className="hidden md:flex gap-6">
-                <Link href="/" className="text-blue-600 font-semibold">
-                  Objevuj
-                </Link>
-                <Link href="/mapa" className="text-gray-600 hover:text-blue-600 transition-colors">
-                  Mapa okolí
-                </Link>
-                <Link href="/brouzdal" className="text-gray-600 hover:text-blue-600 transition-colors">
-                  Brouzdal
-                </Link>
-              </div>
+              <Link href="/mapa" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-2">
+                <span className="text-xl">🗺️</span>
+                <span>Mapa okolí</span>
+              </Link>
+              <Link href="/brouzdal" className="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-2">
+                <Image src="/brouzdal.png" alt="Brouzdal" width={100} height={40} className="object-contain" />
+              </Link>
             </div>
             <div className="flex items-center gap-3">
               {liked.length > 0 && (
@@ -246,7 +246,7 @@ export default function HomePage() {
       </nav>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden pt-16">{/* pt-16 for fixed navbar */}
         {/* Left: Swipe Cards (1/3) */}
         <div className="w-full md:w-1/3 flex flex-col bg-white/50 backdrop-blur-sm border-r border-blue-200">
           {/* Header */}

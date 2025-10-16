@@ -145,6 +145,7 @@ export default function RouteMap({ userLocation, destinations, transportMode = '
   const [allBusStops, setAllBusStops] = useState<any[]>([]);
   const [isSettingLocation, setIsSettingLocation] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -464,8 +465,14 @@ export default function RouteMap({ userLocation, destinations, transportMode = '
 
       {/* Info box - kompaktní verze */}
       {!loading && totalDistance > 0 && (
-        <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3 z-[1000] w-80 max-h-[70vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-2 sticky top-0 bg-white pb-2 border-b border-blue-200">
+        <div 
+          className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3 z-[1000] w-80 max-h-[70vh] overflow-y-auto"
+          onScroll={(e) => {
+            const target = e.target as HTMLDivElement;
+            setIsScrolled(target.scrollTop > 0);
+          }}
+        >
+          <div className={`flex items-center justify-between mb-2 sticky top-[-12px] bg-white pb-2 border-b border-blue-200 z-10 transition-all ${isScrolled ? 'pt-5' : 'pt-0'}`}>
             <h4 className="font-semibold flex items-center gap-2 text-sm text-blue-700">
               <span>🚌</span>
               <span>Trasa</span>
