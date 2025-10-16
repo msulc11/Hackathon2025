@@ -29,7 +29,8 @@ interface Feature {
     email_1?: string;
   };
   category: string;
-  featureType?: 'transport' | 'place'; // Nový field z API
+  featureType?: 'transport' | 'place';
+  emoji?: string; // Přidáno emoji
 }
 
 interface InteractiveMapProps {
@@ -41,10 +42,10 @@ interface InteractiveMapProps {
   userLocation?: [number, number]; // Poloha uživatele
 }
 
-// Ikony pro různé typy
-const createIcon = (isTransport: boolean) => {
-  const emoji = isTransport ? '🚌' : '📍';
-  const color = isTransport ? '#f59e0b' : '#3b82f6';
+// Ikony pro různé typy - použije emoji z kategorie
+const createIcon = (feature: Feature) => {
+  const emoji = feature.emoji || (feature.featureType === 'transport' ? '🚌' : '📍');
+  const color = feature.featureType === 'transport' ? '#f59e0b' : '#3b82f6';
   
   return L.divIcon({
     className: 'custom-marker',
@@ -118,13 +119,12 @@ export default function InteractiveMap({ features, filters, userLocation }: Inte
   });
 
   return (
-    <div className="h-[calc(100vh-200px)] relative">
+    <div className="h-full relative">
       <MapContainer
         center={defaultCenter}
         zoom={12}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={true}
-        className="rounded-lg"
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -178,13 +178,12 @@ export default function InteractiveMap({ features, filters, userLocation }: Inte
         >
           {features.map((feature, index) => {
             const [lon, lat] = feature.geometry.coordinates;
-            const isTransport = feature.featureType === 'transport';
             
             return (
               <Marker
                 key={`${feature.id}-${index}`}
                 position={[lat, lon]}
-                icon={createIcon(isTransport)}
+                icon={createIcon(feature)}
               >
                 <Popup maxWidth={320} className="custom-popup">
                   <div className="p-3">
@@ -195,7 +194,6 @@ export default function InteractiveMap({ features, filters, userLocation }: Inte
                           {feature.properties.nazev}
                         </h3>
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xl">{isTransport ? '🚌' : '📍'}</span>
                           <span className="text-sm text-gray-600">
                             {feature.category}
                           </span>
@@ -239,7 +237,8 @@ export default function InteractiveMap({ features, filters, userLocation }: Inte
                           href={feature.properties.www}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs bg-blue-500 text-white px-3 py-1.5 rounded-md hover:bg-blue-600 transition-colors"
+                          className="inline-flex items-center gap-1 text-xs bg-blue-600 px-3 py-1.5 rounded-md hover:bg-blue-700 active:bg-blue-800 transition-colors"
+                          style={{ color: 'white', textDecoration: 'none' }}
                         >
                           <span>🌐</span>
                           <span>Web</span>
@@ -250,7 +249,8 @@ export default function InteractiveMap({ features, filters, userLocation }: Inte
                         feature.properties.mobil_1) && (
                         <a
                           href={`tel:${feature.properties.telefon || feature.properties.telefon_1 || feature.properties.mobil_1}`}
-                          className="inline-flex items-center gap-1 text-xs bg-green-500 text-white px-3 py-1.5 rounded-md hover:bg-green-600 transition-colors"
+                          className="inline-flex items-center gap-1 text-xs bg-green-600 px-3 py-1.5 rounded-md hover:bg-green-700 active:bg-green-800 transition-colors"
+                          style={{ color: 'white', textDecoration: 'none' }}
                         >
                           <span>📞</span>
                           <span>Volat</span>
@@ -260,7 +260,8 @@ export default function InteractiveMap({ features, filters, userLocation }: Inte
                         href={`https://www.google.com/maps/search/?api=1&query=${lat},${lon}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs bg-gray-600 text-white px-3 py-1.5 rounded-md hover:bg-gray-700 transition-colors"
+                        className="inline-flex items-center gap-1 text-xs bg-cyan-600 px-3 py-1.5 rounded-md hover:bg-cyan-700 active:bg-cyan-800 transition-colors"
+                        style={{ color: 'white', textDecoration: 'none' }}
                       >
                         <span>🗺️</span>
                         <span>Navigace</span>
@@ -273,25 +274,6 @@ export default function InteractiveMap({ features, filters, userLocation }: Inte
           })}
         </MarkerClusterGroup>
       </MapContainer>
-
-      {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg p-3 z-[1000]">
-        <h4 className="font-semibold text-sm mb-2 text-gray-900">Legenda</h4>
-        <div className="space-y-2">
-          {filters.transport && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-xl">🚌</span>
-              <span className="text-gray-700">Doprava</span>
-            </div>
-          )}
-          {filters.places && (
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-xl">📍</span>
-              <span className="text-gray-700">Místa</span>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

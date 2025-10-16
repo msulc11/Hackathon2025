@@ -57,7 +57,7 @@ export default function MapaPage() {
     rozhledny: true,
     koupani: true,
     pamatky: true,
-    bus: true,
+    bus: false, // Výchozí vypnuto kvůli velkému množství
   });
   const [stats, setStats] = useState({ transport: 0, places: 0, total: 0, categories: {} });
   const [loading, setLoading] = useState(true);
@@ -201,19 +201,19 @@ export default function MapaPage() {
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 via-cyan-50 to-blue-100">
       {/* Navbar */}
-      <nav className="bg-white/80 backdrop-blur-md border-b border-blue-200 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav className="bg-white/90 backdrop-blur-md border-b border-blue-200 z-50 shadow-sm">
+        <div className="max-w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-8">
-              <Link href="/" className="flex items-center gap-2">
-                <Image src="/logo.png" alt="ZabrouzdAi" width={32} height={32} className="object-contain" />
-                <span className="text-xl font-bold text-blue-600 hover:text-blue-700 transition-colors">ZabrouzdAi</span>
+              <Link href="/" className="text-xl font-bold text-blue-600 flex items-center gap-2">
+                <Image src="/logo.png" alt="ZabrouzdAi" width={32} height={32} />
+                <span>ZabrouzdAi</span>
               </Link>
               <div className="hidden md:flex gap-6">
-                <Link href="/" className="text-gray-600 hover:text-blue-600 transition-colors">
-                  Domů
+                <Link href="/" className="text-gray-600 hover:text-blue-600">
+                  Objevuj
                 </Link>
-                <Link href="/mapa" className="text-blue-600 font-semibold border-b-2 border-blue-600">
+                <Link href="/mapa" className="text-blue-600 font-semibold">
                   Mapa okolí
                 </Link>
               </div>
