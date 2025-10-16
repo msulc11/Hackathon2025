@@ -38,6 +38,7 @@ interface InteractiveMapProps {
     transport: boolean;
     places: boolean;
   };
+  userLocation?: [number, number]; // Poloha uživatele
 }
 
 // Ikony pro různé typy
@@ -95,14 +96,32 @@ function MapBounds({ features }: { features: Feature[] }) {
   return null;
 }
 
-export default function InteractiveMap({ features, filters }: InteractiveMapProps) {
-  const defaultCenter: [number, number] = [50.2091, 15.8327];
+export default function InteractiveMap({ features, filters, userLocation }: InteractiveMapProps) {
+  const defaultCenter: [number, number] = userLocation || [50.2091, 15.8327];
+
+  // Ikona pro polohu uživatele
+  const userLocationIcon = L.divIcon({
+    className: 'user-location-marker',
+    html: `
+      <div style="
+        background: #ef4444;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 4px solid white;
+        box-shadow: 0 0 0 2px #ef4444, 0 4px 6px rgba(0,0,0,0.3);
+        animation: pulse 2s infinite;
+      "></div>
+    `,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10]
+  });
 
   return (
     <div className="h-[calc(100vh-200px)] relative">
       <MapContainer
         center={defaultCenter}
-        zoom={10}
+        zoom={12}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={true}
         className="rounded-lg"
@@ -114,11 +133,48 @@ export default function InteractiveMap({ features, filters }: InteractiveMapProp
         
         <MapBounds features={features} />
 
+        {/* Poloha uživatele */}
+        {userLocation && (
+          <Marker position={userLocation} icon={userLocationIcon}>
+            <Popup>
+              <div className="p-2 text-center">
+                <p className="font-semibold">📍 Vaše poloha</p>
+                <p className="text-xs text-gray-600 mt-1">
+                  {userLocation[0].toFixed(4)}, {userLocation[1].toFixed(4)}
+                </p>
+              </div>
+            </Popup>
+          </Marker>
+        )}
+
         <MarkerClusterGroup
           chunkedLoading
           maxClusterRadius={50}
           spiderfyOnMaxZoom={true}
           showCoverageOnHover={false}
+          iconCreateFunction={(cluster: any) => {
+            const count = cluster.getChildCount();
+            let size = 'small';
+            let sizeClass = 'w-10 h-10 text-sm';
+            
+            if (count > 100) {
+              size = 'large';
+              sizeClass = 'w-16 h-16 text-lg';
+            } else if (count > 10) {
+              size = 'medium';
+              sizeClass = 'w-12 h-12 text-base';
+            }
+            
+            return L.divIcon({
+              html: `
+                <div class="flex items-center justify-center ${sizeClass} rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold shadow-lg border-4 border-white">
+                  ${count}
+                </div>
+              `,
+              className: 'custom-cluster-icon',
+              iconSize: L.point(40, 40, true)
+            });
+          }}
         >
           {features.map((feature, index) => {
             const [lon, lat] = feature.geometry.coordinates;
